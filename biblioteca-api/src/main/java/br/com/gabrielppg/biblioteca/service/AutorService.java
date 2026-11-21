@@ -1,0 +1,108 @@
+package br.com.gabrielppg.biblioteca.service;
+
+import br.com.gabrielppg.biblioteca.exception.OperacaoNaoPermitidaException;
+import br.com.gabrielppg.biblioteca.model.Autor;
+import br.com.gabrielppg.biblioteca.repository.AutorRepository;
+import br.com.gabrielppg.biblioteca.repository.LivroRepository;
+import br.com.gabrielppg.biblioteca.security.SecurityService;
+import br.com.gabrielppg.biblioteca.validator.AutorValidator;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Example;
+import org.springframework.data.domain.ExampleMatcher;
+import org.springframework.stereotype.Service;
+import br.com.gabrielppg.biblioteca.exception.RegistroNaoEncontradoException;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class AutorService {
+
+    private final AutorRepository repository;
+    private final AutorValidator validator;
+    private final LivroRepository livroRepository;
+    private final SecurityService securityService;
+
+    public Autor salvar (Autor autor){
+        validator.validar(autor);
+        autor.setIdUsuario(securityService.obterIdUsuarioLogado());
+        return repository.save(autor);
+    }
+
+    @Transactional
+    public void atualizar(UUID id, Autor dados) {
+
+        if (id == null) {
+            throw new IllegalArgumentException(
+                    "O ID do autor é obrigatório para atualização"
+            );
+        }
+
+        Autor autor = repository.findById(id)
+                .orElseThrow(() ->
+                        new RegistroNaoEncontradoException(
+                                "Autor não encontrado: " + id
+                        )
+                );
+
+        autor.setNome(dados.getNome());
+        autor.setNacionalidade(dados.getNacionalidade());
+        autor.setDataNascimento(dados.getDataNascimento());
+
+        validator.validar(autor);
+
+        repository.save(autor);
+    }
+
+    public Optional<Autor> obterAutorPeloId(UUID id){
+        return repository.findById(id);
+    }
+
+    public void deletar (Autor autor){
+        if (possuiLivro(autor)){
+            throw new OperacaoNaoPermitidaException("Não é permitido excluir um autor que possui livros cadastrados");
+        }
+        repository.delete(autor);
+    }
+
+    public List<Autor> pesquisa (String nome, String nacionalidade){
+        if (nome != null && nacionalidade != null){
+            return repository.findByNomeAndNacionalidade(nome, nacionalidade);
+        }
+
+        if (nome != null){
+            return repository.findByNome(nome);
+        }
+
+        if (nacionalidade != null){
+            return repository.findByNacionalidade(nacionalidade);
+        }
+
+        return repository.findAll();
+
+    }
+
+    public List<Autor> pesquisaByExample (String nome, String nacionalidade){
+        var autor = new Autor();
+        autor.setNome(nome);
+        autor.setNacionalidade(nacionalidade);
+
+        ExampleMatcher matcher = ExampleMatcher
+                .matching()
+                .withIgnoreNullValues()
+                .withIgnoreCase()
+                .withStringMatcher(ExampleMatcher.StringMatcher.CONTAINING);
+        Example<Autor> autorExample = Example.of(autor, matcher);
+
+        return repository.findAll(autorExample);
+
+    }
+
+    public boolean possuiLivro(Autor autor){
+        return livroRepository.existsByAutor(autor);
+    }
+
+}

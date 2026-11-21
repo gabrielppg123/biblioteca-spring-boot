@@ -1,0 +1,16 @@
+package br.com.gabrielppg.biblioteca;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
+
+@SpringBootApplication
+@EnableJpaAuditing
+public class Inicio {
+
+	public static void main(String[] args) {
+		SpringApplication.run(Inicio.class, args);
+	}
+
+
+}

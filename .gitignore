@@ -1,0 +1,53 @@
+
+# Maven / Compilação
+target/
+*.class
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Eclipse / VS Code
+.classpath
+.project
+.settings/
+.vscode/
+
+# Logs
+*.log
+logs/
+
+# Variáveis de ambiente
+.env
+.env.*
+!.env.example
+
+# Configurações locais e segredos
+application-local.yml
+application-local.yaml
+application-local.properties
+application-secrets.yml
+application-secrets.yaml
+application-secrets.properties
+
+# Chaves e certificados privados
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+# AWS
+.aws/
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Arquivos temporários
+*.tmp
+*.bak
+*.swp

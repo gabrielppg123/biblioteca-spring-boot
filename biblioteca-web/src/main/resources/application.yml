@@ -1,0 +1,31 @@
+server:
+  port: 8081
+  servlet:
+    session:
+      cookie:
+        name: BIBLIOTECA_WEB_SESSION
+        http-only: true
+        same-site: lax
+
+spring:
+  application:
+    name: biblioteca-web
+  security:
+    oauth2:
+      client:
+        registration:
+          biblioteca:
+            provider: biblioteca
+            client-id: ${BIBLIOTECA_WEB_CLIENT_ID}
+            client-secret: ${BIBLIOTECA_WEB_CLIENT_SECRET}
+            client-authentication-method: client_secret_basic
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            scope: openid
+        provider:
+          biblioteca:
+            issuer-uri: ${BIBLIOTECA_AUTH_ISSUER:http://localhost:9000}
+
+biblioteca:
+  api:
+    base-url: ${BIBLIOTECA_API_URL:http://localhost:8082}

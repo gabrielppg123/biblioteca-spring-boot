@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Biblioteca • Início</title>
+    <link rel="stylesheet" th:href="@{/css/estilo.css}">
+</head>
+<body>
+<header class="topo"><div class="container menu"><div class="marca">Biblioteca<span>WEB</span></div><span class="selo">Java 21 · Spring Boot · OAuth2</span></div></header>
+<main class="container central">
+    <div class="etiqueta">PROJETO DE PORTFÓLIO</div>
+    <h1>Seu acervo,<br><em>em um só lugar.</em></h1>
+    <p class="subtitulo">Uma interface simples para consultar livros e autores. A autenticação é realizada pelo Authorization Server, e as consultas são feitas por uma API REST protegida.</p>
+    <div class="acoes">
+        <a class="botao principal" th:href="@{/oauth2/authorization/biblioteca}">Entrar na Biblioteca</a>
+        <span class="ajuda">Login local ou Google · sem inserir tokens manualmente</span>
+    </div>
+    <div class="cards">
+        <div class="card"><span>01</span><strong>Autenticação</strong><small>OAuth2 e PKCE</small></div>
+        <div class="card"><span>02</span><strong>Catálogo</strong><small>Livros e autores</small></div>
+        <div class="card"><span>03</span><strong>Integração</strong><small>JWT e API REST</small></div>
+    </div>
+</main>
+<footer class="container rodape">Biblioteca · Projeto demonstrativo de arquitetura em camadas</footer>
+</body>
+</html>

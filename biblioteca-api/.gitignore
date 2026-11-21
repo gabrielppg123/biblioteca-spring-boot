@@ -1,0 +1,48 @@
+# Compilação Java/Maven
+/target/
+**/target/
+*.class
+
+# IntelliJ / outras IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+.factorypath
+.apt_generated/
+.sts4-cache/
+.vscode/
+
+# Arquivos locais e logs
+*.log
+*.log.*
+logs/
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Credenciais e configurações sensíveis
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+application-local.yml
+application-local.yaml
+application-local.properties
+application-secret.yml
+application-secrets.yml
+
+# Anotações de laboratório: revisar e publicar apenas versões sanitizadas
+/comandos-docker.txt
+/comandos-sql.txt
+
+# Arquivos temporários de desenvolvimento
+HELP.md

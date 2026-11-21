@@ -1,0 +1,37 @@
+# Não incluir histórico Git, IDE e build anterior no contexto Docker
+.git/
+.github/
+.idea/
+.vscode/
+**/target/
+**/build/
+*.iml
+*.ipr
+*.iws
+
+# Nunca levar credenciais e arquivos locais para a imagem
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+application-local.yml
+application-local.yaml
+application-local.properties
+application-secret.yml
+application-secrets.yml
+comandos-docker.txt
+comandos-sql.txt
+
+# Logs, temporários, notas
+*.log
+*.log.*
+logs/
+*.tmp
+HELP.md
+.DS_Store
+Thumbs.db
