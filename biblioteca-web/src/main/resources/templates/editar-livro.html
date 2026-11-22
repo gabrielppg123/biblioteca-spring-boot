@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Biblioteca • Editar livro</title><link rel="stylesheet" th:href="@{/css/estilo.css}"></head>
+<body>
+<header class="topo"><div class="container menu"><a class="marca" th:href="@{/livros}">Biblioteca<span>WEB</span></a><nav><a class="ativo" th:href="@{/livros}">Livros</a><a th:href="@{/autores}">Autores</a></nav><form th:action="@{/logout}" method="post"><input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"><button class="sair" type="submit">Sair</button></form></div></header>
+<main class="container pagina">
+  <div class="cabecalho"><div><div class="etiqueta">EDIÇÃO</div>
+    <h1>Editar livro</h1>
+    <p>Atualize os dados do livro no catálogo da Biblioteca.</p></div><span class="selo">GERENTE ou OPERADOR</span></div>
+  <div th:if="${sucesso != null}" class="sucesso" role="status" th:text="${sucesso}"></div>
+  <div th:if="${erro != null}" class="erro" role="alert" th:text="${erro}"></div>
+  <div class="aviso" th:if="${#lists.isEmpty(autores)}">Ainda nao ha autores disponiveis. <a th:href="@{/autores/novo}">Cadastre o primeiro autor</a> usando uma conta GERENTE antes de cadastrar livros.</div>
+  <form class="form-cadastro" method="post" th:action="@{/livros/{id}/editar(id=${idLivro})}" th:object="${form}" th:if="${!#lists.isEmpty(autores)}">
+    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+    <div class="form-grid">
+      <label class="campo campo-largo">Titulo do livro <input type="text" th:field="*{titulo}" maxlength="150" placeholder="Ex.: Memorias Postumas de Bras Cubas" required></label>
+      <label class="campo">ISBN <input type="text" th:field="*{isbn}" maxlength="20" placeholder="978-85-7522-000-9" required></label>
+      <label class="campo">Data de publicacao <input type="date" th:field="*{dataPublicacao}" required></label>
+      <label class="campo">Genero
+        <select th:field="*{genero}" required><option value="">Selecione...</option><option th:each="genero : ${generos}" th:value="${genero}" th:text="${genero}"></option></select>
+      </label>
+      <label class="campo">Preco (R$) <input type="text" inputmode="decimal" th:field="*{preco}" placeholder="Ex.: 39,90"><small>Obrigatorio para obras publicadas a partir de 2020.</small></label>
+      <label class="campo campo-largo">Autor
+        <select th:field="*{idAutor}" required><option value="">Selecione um autor...</option><option th:each="autor : ${autores}" th:value="${autor.id}" th:text="${autor.nome + ' · ' + autor.nacionalidade}"></option></select>
+      </label>
+    </div>
+    <div class="acoes-form"><a class="botao secundario" th:href="@{/livros}">Cancelar</a><button class="botao principal" type="submit">Salvar alterações</button></div>
+  </form>
+  <p class="ajuda-form">O livro sera gravado na API com a identidade do usuario autenticado. Clientes de maquina continuam sem permissao de escrita.</p>
+</main>
+</body></html>

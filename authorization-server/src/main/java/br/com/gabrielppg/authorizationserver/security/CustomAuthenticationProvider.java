@@ -28,7 +28,7 @@ public class CustomAuthenticationProvider implements AuthenticationProvider {
 
         Usuario usuarioEncontrado = usuarioService.obterPorLogin(login);
 
-        if (usuarioEncontrado == null){
+        if (usuarioEncontrado == null || !usuarioEncontrado.isAtivo()) {
             throw getErroUsuarioNaoEncontrado();
         }
 

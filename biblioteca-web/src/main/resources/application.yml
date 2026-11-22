@@ -28,4 +28,4 @@ spring:
 
 biblioteca:
   api:
-    base-url: ${BIBLIOTECA_API_URL:http://localhost:8082}
+    base-url: ${BIBLIOTECA_API_URL:http://localhost:8081}

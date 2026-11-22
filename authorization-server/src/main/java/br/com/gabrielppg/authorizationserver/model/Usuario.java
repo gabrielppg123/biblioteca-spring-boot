@@ -37,6 +37,9 @@ public class Usuario {
     @Column (name="roles", columnDefinition = "varchar[]")
     private List<String> roles;
 
+    @Column(name = "ativo", nullable = false)
+    private boolean ativo = true;
+
 
 
 }

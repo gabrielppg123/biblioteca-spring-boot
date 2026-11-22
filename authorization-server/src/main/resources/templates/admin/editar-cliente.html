@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Editar cliente OAuth2 · Administração</title>
+    <link rel="stylesheet" th:href="@{/css/admin.css}">
+</head>
+<body>
+<header class="site-header"><strong>Biblioteca · Administração</strong>
+    <nav><a th:href="@{/admin}">Início</a><a th:href="@{/admin/usuarios}">Usuários</a>
+        <a th:href="@{/admin/clientes}">Clientes OAuth2</a></nav>
+</header>
+<main><div class="panel">
+    <h1>Editar cliente OAuth2</h1>
+    <p class="muted">Client ID: <strong th:text="${clientId}">client-id</strong> (imutável)</p>
+    <p class="note">Alterar tipo, scopes ou Redirect URI pode interromper o login ou uma integração.
+        Não altere os clientes utilizados pela Biblioteca Web ou pelo Postman sem planejar os ajustes correspondentes.</p>
+    <form method="post" th:action="@{/admin/clientes/{id}/editar(id=${idCliente})}"
+          th:object="${form}" autocomplete="off">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <div class="error" th:if="${#fields.hasGlobalErrors()}">
+            <p th:each="e : ${#fields.globalErrors()}" th:text="${e}"></p>
+        </div>
+        <div class="form-grid">
+            <div class="field">
+                <label for="tipoCliente">Tipo de cliente</label>
+                <select id="tipoCliente" th:field="*{tipoCliente}" required>
+                    <option value="INTERATIVO">INTERATIVO — Authorization Code + PKCE</option>
+                    <option value="INTEGRACAO">INTEGRACAO — Client Credentials</option>
+                </select>
+                <span class="error" th:if="${#fields.hasErrors('tipoCliente')}" th:errors="*{tipoCliente}"></span>
+            </div>
+            <div class="field full">
+                <label for="scope">Scopes (separados por espaço)</label>
+                <input id="scope" th:field="*{scope}" maxlength="500" required
+                       placeholder="openid biblioteca.read">
+                <span class="error" th:if="${#fields.hasErrors('scope')}" th:errors="*{scope}"></span>
+            </div>
+            <div class="field full" id="campoRedirect">
+                <label for="redirectURI">Redirect URI (somente INTERATIVO)</label>
+                <input id="redirectURI" type="url" th:field="*{redirectURI}" maxlength="500"
+                       placeholder="http://localhost:8081/login/oauth2/code/biblioteca">
+                <span class="error" th:if="${#fields.hasErrors('redirectURI')}" th:errors="*{redirectURI}"></span>
+            </div>
+        </div>
+        <div class="actions">
+            <button type="submit" class="button">Salvar alterações</button>
+            <a class="button secondary" th:href="@{/admin/clientes}">Cancelar</a>
+        </div>
+    </form>
+    <p class="muted">A senha/Client Secret não aparece nesta tela e nunca é regravada durante a edição.</p>
+</div></main>
+<script>
+    const tipo = document.getElementById('tipoCliente');
+    const campo = document.getElementById('campoRedirect');
+    const uri = document.getElementById('redirectURI');
+    function atualizarCampo() {
+        const interativo = tipo.value === 'INTERATIVO';
+        campo.hidden = !interativo;
+        uri.required = interativo;
+        // Não apagar valor do formulário automaticamente ao alternar o tipo.
+    }
+    tipo.addEventListener('change', atualizarCampo);
+    atualizarCampo();
+</script>
+</body>
+</html>

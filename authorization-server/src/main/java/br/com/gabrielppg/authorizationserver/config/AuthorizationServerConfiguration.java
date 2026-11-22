@@ -29,6 +29,7 @@ import org.springframework.security.oauth2.server.authorization.token.OAuth2Toke
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
+import org.springframework.security.oauth2.core.oidc.endpoint.OidcParameterNames;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -149,38 +150,45 @@ public class AuthorizationServerConfiguration {
     }
 
     @Bean
-    public OAuth2TokenCustomizer<JwtEncodingContext> tokenCustomizer(){
+    public OAuth2TokenCustomizer<JwtEncodingContext> tokenCustomizer() {
         return context -> {
             var principal = context.getPrincipal();
-
+            OAuth2TokenType tipoToken = context.getTokenType();
 
             // Todos os access tokens deste AS são destinados à Biblioteca API.
             // O ID Token OIDC não deve receber esta audiência.
-            if (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) {
+            if (OAuth2TokenType.ACCESS_TOKEN.equals(tipoToken)) {
                 context.getClaims().audience(List.of("biblioteca-api"));
             }
 
-            if (principal instanceof CustomAuthentication authentication){
-                OAuth2TokenType tipoToken = context.getTokenType();
+            if (principal instanceof CustomAuthentication authentication) {
 
-                if(OAuth2TokenType.ACCESS_TOKEN.equals(tipoToken)){
-                    Collection<GrantedAuthority> authorities = authentication.getAuthorities();
-                    List<String> authoritiesList = authorities.stream().map(GrantedAuthority::getAuthority).toList();
+                List<String> authoritiesList = authentication.getAuthorities()
+                        .stream()
+                        .map(GrantedAuthority::getAuthority)
+                        .toList();
+
+                if (OAuth2TokenType.ACCESS_TOKEN.equals(tipoToken)) {
+
+                    // Claims destinados à Biblioteca API.
                     context.getClaims()
                             .claim("authorities", authoritiesList)
                             .claim("tipo_principal", "USUARIO")
                             .claim("usuario_id", authentication.getUsuario().getId().toString());
 
                     String email = authentication.getUsuario().getEmail();
+
                     if (email != null && !email.isBlank()) {
                         context.getClaims().claim("email", email);
                     }
 
+                } else if (OidcParameterNames.ID_TOKEN.equals(tipoToken.getValue())) {
+
+                    // Autoridades disponibilizadas para a aplicação WEB.
+                    context.getClaims()
+                            .claim("authorities", authoritiesList);
                 }
-
-
             }
-
         };
     }
 

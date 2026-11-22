@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Novo Client Secret · Administração</title>
+    <link rel="stylesheet" th:href="@{/css/admin.css}">
+</head>
+<body>
+<header class="site-header"><strong>Biblioteca · Administração</strong>
+    <nav><a th:href="@{/admin}">Início</a><a th:href="@{/admin/clientes}">Clientes OAuth2</a></nav>
+</header>
+<main><div class="panel">
+    <h1>Client Secret alterado com sucesso</h1>
+    <p>Cliente: <strong th:text="${clientId}">client-id</strong></p>
+    <p class="note"><strong>O novo segredo já está em vigor.</strong> A alteração foi salva antes de abrir esta página;
+        o botão abaixo apenas retorna à lista, não cancela a troca. <strong>Copie agora!</strong>
+        Este valor é mostrado somente nesta visualização.
+        Ele não poderá ser recuperado do banco, onde é armazenado apenas o hash BCrypt.
+        Guarde-o em um gerenciador de segredos. Não o envie para o GitHub nem o compartilhe em capturas de tela.</p>
+    <div class="field full">
+        <label for="novoSegredo">Client Secret</label>
+        <input id="novoSegredo" type="password" readonly autocomplete="off" th:value="${novoSegredo}">
+    </div>
+    <div class="actions">
+        <button type="button" id="mostrar" class="button secondary">Mostrar / ocultar</button>
+        <button type="button" id="copiar" class="button">Copiar</button>
+        <a class="button secondary" th:href="@{/admin/clientes}">Voltar à lista de clientes</a>
+    </div>
+    <p class="muted" id="avisoCopia" aria-live="polite"></p>
+</div></main>
+<script>
+    const segredo = document.getElementById('novoSegredo');
+    document.getElementById('mostrar').addEventListener('click', () => {
+        segredo.type = segredo.type === 'password' ? 'text' : 'password';
+    });
+    document.getElementById('copiar').addEventListener('click', async () => {
+        try {
+            await navigator.clipboard.writeText(segredo.value);
+            document.getElementById('avisoCopia').textContent = 'Copiado! Guarde em local seguro.';
+        } catch (_) {
+            segredo.type = 'text';
+            segredo.select();
+            document.getElementById('avisoCopia').textContent = 'Selecione e copie manualmente.';
+        }
+    });
+</script>
+</body>
+</html>

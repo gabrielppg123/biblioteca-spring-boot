@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Administração · Authorization Server</title><link rel="stylesheet" th:href="@{/css/admin.css}"></head>
+<body>
+<header class="site-header"><strong>Biblioteca · Administração</strong><nav><a th:href="@{/admin}">Início</a><a th:href="@{/admin/usuarios}">Usuários</a><a th:href="@{/admin/clientes}">Clientes OAuth2</a></nav></header>
+<main><h1>Administração de identidades</h1><p class="muted">Área restrita a usuários com autoridade GERENTE.</p>
+<div class="cards"><a th:href="@{/admin/usuarios}"><strong>Usuários</strong><span>Pesquisar, editar, redefinir senhas e ativar/desativar usuários locais e Google.</span></a>
+<a th:href="@{/admin/clientes}"><strong>Clientes OAuth2</strong><span>Consultar clientes cadastrados sem expor segredos.</span></a></div>
+<p class="note">As configurações de autenticação e os endpoints OAuth2 existentes não foram alterados.</p></main>
+</body></html>

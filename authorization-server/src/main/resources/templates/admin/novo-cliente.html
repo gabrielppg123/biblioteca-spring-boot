@@ -1,0 +1,280 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Novo cliente OAuth2 · Administração</title>
+    <link rel="stylesheet" th:href="@{/css/admin.css}">
+</head>
+
+<body>
+
+<header class="site-header">
+
+    <strong>Biblioteca · Administração</strong>
+
+    <nav>
+        <a th:href="@{/admin}">Início</a>
+        <a th:href="@{/admin/usuarios}">Usuários</a>
+        <a th:href="@{/admin/clientes}">Clientes OAuth2</a>
+    </nav>
+
+</header>
+
+<main>
+
+    <div class="panel">
+
+        <h1>Cadastrar cliente OAuth2</h1>
+
+        <p class="muted">
+            Somente administradores GERENTE podem cadastrar clientes.
+        </p>
+
+        <form th:action="@{/admin/clientes}"
+              th:object="${form}"
+              method="post"
+              autocomplete="off">
+
+            <input type="hidden"
+                   th:name="${_csrf.parameterName}"
+                   th:value="${_csrf.token}">
+
+            <div class="error" th:if="${#fields.hasGlobalErrors()}">
+                <p th:each="erro : ${#fields.globalErrors()}"
+                   th:text="${erro}">
+                    Erro
+                </p>
+            </div>
+
+            <div class="form-grid">
+
+                <div class="field">
+
+                    <label for="clientId">Client ID</label>
+
+                    <input id="clientId"
+                           th:field="*{clientId}"
+                           required
+                           minlength="3"
+                           maxlength="100"
+                           pattern="[A-Za-z0-9][A-Za-z0-9._-]{2,99}">
+
+                    <span class="error"
+                          th:if="${#fields.hasErrors('clientId')}"
+                          th:errors="*{clientId}">
+                        Erro
+                    </span>
+
+                </div>
+
+                <div class="field">
+
+                    <label for="tipoCliente">Tipo de cliente</label>
+
+                    <select id="tipoCliente"
+                            th:field="*{tipoCliente}"
+                            required>
+
+                        <option value="INTERATIVO">
+                            INTERATIVO — Aplicação Web
+                        </option>
+
+                        <option value="INTEGRACAO">
+                            INTEGRACAO — Comunicação entre sistemas
+                        </option>
+
+                    </select>
+
+                    <span class="error"
+                          th:if="${#fields.hasErrors('tipoCliente')}"
+                          th:errors="*{tipoCliente}">
+                        Erro
+                    </span>
+
+                </div>
+
+                <div class="field full">
+
+                    <label for="clientSecret">Client Secret</label>
+
+                    <input type="password"
+                           id="clientSecret"
+                           th:field="*{clientSecret}"
+                           required
+                           minlength="3"
+                           maxlength="72"
+                           autocomplete="new-password">
+
+                    <div class="actions">
+
+                        <button class="button secondary"
+                                type="button"
+                                id="gerarSegredo">
+                            Gerar segredo seguro
+                        </button>
+
+                        <button class="button secondary"
+                                type="button"
+                                id="mostrarSegredo">
+                            Mostrar / ocultar
+                        </button>
+
+                        <button class="button secondary"
+                                type="button"
+                                id="copiarSegredo">
+                            Copiar segredo
+                        </button>
+
+                    </div>
+
+                    <span class="error"
+                          th:if="${#fields.hasErrors('clientSecret')}"
+                          th:errors="*{clientSecret}">
+                        Erro
+                    </span>
+
+                    <p class="muted">
+                        Gere um segredo aleatório e guarde-o em local seguro.
+                        O banco armazenará somente o hash BCrypt, e o valor original
+                        não poderá ser recuperado posteriormente.
+                    </p>
+
+                </div>
+
+                <div class="field full">
+
+                    <label for="scope">Scopes</label>
+
+                    <input id="scope"
+                           th:field="*{scope}"
+                           required
+                           maxlength="500"
+                           placeholder="openid profile biblioteca.read">
+
+                    <span class="error"
+                          th:if="${#fields.hasErrors('scope')}"
+                          th:errors="*{scope}">
+                        Erro
+                    </span>
+
+                    <p class="muted">
+                        Informe os scopes separados por espaços.
+                    </p>
+
+                </div>
+
+                <div class="field full" id="campoRedirect">
+
+                    <label for="redirectURI">Redirect URI</label>
+
+                    <input type="url"
+                           id="redirectURI"
+                           th:field="*{redirectURI}"
+                           maxlength="500"
+                           placeholder="http://localhost:8081/login/oauth2/code/biblioteca">
+
+                    <span class="error"
+                          th:if="${#fields.hasErrors('redirectURI')}"
+                          th:errors="*{redirectURI}">
+                        Erro
+                    </span>
+
+                </div>
+
+            </div>
+
+            <p class="note">
+                Clientes INTERATIVO utilizam Authorization Code com PKCE.
+                Clientes INTEGRACAO utilizam exclusivamente Client Credentials
+                e não precisam de Redirect URI.
+            </p>
+
+            <div class="actions">
+
+                <button class="button" type="submit">
+                    Salvar cliente
+                </button>
+
+                <a class="button secondary"
+                   th:href="@{/admin/clientes}">
+                    Cancelar
+                </a>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</main>
+
+<script>
+
+    const tipoCliente = document.getElementById("tipoCliente");
+    const campoRedirect = document.getElementById("campoRedirect");
+    const redirectURI = document.getElementById("redirectURI");
+
+    function atualizarRedirectURI() {
+
+        const interativo = tipoCliente.value === "INTERATIVO";
+
+        campoRedirect.hidden = !interativo;
+        redirectURI.required = interativo;
+
+        if (!interativo) {
+            redirectURI.value = "";
+        }
+    }
+
+    tipoCliente.addEventListener("change", atualizarRedirectURI);
+
+    atualizarRedirectURI();
+
+    const clientSecret = document.getElementById("clientSecret");
+
+    document.getElementById("gerarSegredo").addEventListener("click", () => {
+
+        const bytes = new Uint8Array(32);
+
+        window.crypto.getRandomValues(bytes);
+
+        clientSecret.value = Array.from(
+            bytes,
+            byte => byte.toString(16).padStart(2, "0")
+        ).join("");
+
+        clientSecret.type = "text";
+    });
+
+    document.getElementById("mostrarSegredo").addEventListener("click", () => {
+
+        clientSecret.type =
+            clientSecret.type === "password" ? "text" : "password";
+    });
+
+    document.getElementById("copiarSegredo").addEventListener("click", async () => {
+
+        if (!clientSecret.value) {
+            alert("Gere ou informe um segredo primeiro.");
+            return;
+        }
+
+        try {
+
+            await navigator.clipboard.writeText(clientSecret.value);
+
+            alert("Segredo copiado. Guarde-o em local seguro.");
+
+        } catch (erro) {
+
+            alert("Não foi possível copiar automaticamente. Selecione e copie o segredo.");
+        }
+    });
+
+</script>
+
+</body>
+</html>

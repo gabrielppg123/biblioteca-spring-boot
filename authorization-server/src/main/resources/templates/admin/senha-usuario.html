@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Redefinir senha · Administração</title><link rel="stylesheet" th:href="@{/css/admin.css}"></head>
+<body>
+<header class="site-header"><strong>Biblioteca · Administração</strong><nav><a th:href="@{/admin}">Início</a><a th:href="@{/admin/usuarios}">Usuários</a><a th:href="@{/admin/clientes}">Clientes OAuth2</a></nav></header>
+<main><div class="panel">
+<h1>Redefinir senha</h1><p class="muted">Usuário: <strong th:text="${login}">login</strong></p>
+<form th:action="@{/admin/usuarios/{id}/senha(id=${idUsuario})}" th:object="${form}" method="post" autocomplete="off">
+<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+<div th:if="${#fields.hasGlobalErrors()}" class="error"><p th:each="erro : ${#fields.globalErrors()}" th:text="${erro}"></p></div>
+<div class="form-grid"><div class="field"><label for="novaSenha">Nova senha</label>
+<input id="novaSenha" type="password" th:field="*{novaSenha}" minlength="12" maxlength="72" autocomplete="new-password" required>
+<span class="error" th:if="${#fields.hasErrors('novaSenha')}" th:errors="*{novaSenha}"></span></div></div>
+<p class="note">A senha será armazenada com BCrypt. Limite de 72 bytes em UTF-8; tokens e sessões já emitidos não são invalidados automaticamente.</p>
+<div class="actions"><button type="submit" class="button">Redefinir senha</button><a th:href="@{/admin/usuarios}" class="button secondary">Cancelar</a></div>
+</form></div></main></body></html>

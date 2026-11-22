@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Biblioteca • Editar autor</title>
+    <link rel="stylesheet" th:href="@{/css/estilo.css}">
+</head>
+<body>
+<header class="topo">
+    <div class="container menu"><a class="marca" th:href="@{/livros}">Biblioteca<span>WEB</span></a>
+        <nav><a th:href="@{/livros}">Livros</a><a class="ativo" th:href="@{/autores}">Autores</a></nav>
+        <form th:action="@{/logout}" method="post"><input type="hidden" th:name="${_csrf.parameterName}"
+                                                          th:value="${_csrf.token}">
+            <button class="sair" type="submit">Sair</button>
+        </form>
+    </div>
+</header>
+<main class="container pagina">
+    <div class="cabecalho">
+        <div>
+            <div class="etiqueta">EDIÇÃO</div>
+            <h1>Editar autor</h1>
+            <p>Atualize os dados do autor no catálogo da Biblioteca.</p></div>
+        <span class="selo">Exige GERENTE</span></div>
+    <div th:if="${erro != null}" class="erro" role="alert" th:text="${erro}"></div>
+    <form class="form-cadastro" method="post" th:action="@{/autores/{id}/editar(id=${idAutor})}" th:object="${form}">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <div class="form-grid">
+            <label class="campo campo-largo">Nome completo <input type="text" th:field="*{nome}" maxlength="100"
+                                                                  placeholder="Ex.: Machado de Assis" required
+                                                                  autocomplete="off"></label>
+            <label class="campo">Data de nascimento <input type="date" th:field="*{dataNascimento}" required></label>
+            <label class="campo">Nacionalidade <input type="text" th:field="*{nacionalidade}" maxlength="50"
+                                                      placeholder="Ex.: Brasileiro" required></label>
+        </div>
+        <div class="acoes-form"><a class="botao secundario" th:href="@{/autores}">Cancelar</a>
+            <button class="botao principal" type="submit">
+                Salvar alterações
+            </button>
+        </div>
+    </form>
+    <p class="ajuda-form">A autorizacao final e feita pela Biblioteca API usando seu token de usuario.</p>
+</main>
+</body>
+</html>

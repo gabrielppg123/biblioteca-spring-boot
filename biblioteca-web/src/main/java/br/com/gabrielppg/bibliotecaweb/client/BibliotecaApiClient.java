@@ -1,6 +1,8 @@
+
 package br.com.gabrielppg.bibliotecaweb.client;
 
 import br.com.gabrielppg.bibliotecaweb.dto.AutorDTO;
+import br.com.gabrielppg.bibliotecaweb.dto.LivroDTO;
 import br.com.gabrielppg.bibliotecaweb.dto.PaginaLivros;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -9,6 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 import java.util.List;
+import java.util.UUID;
 
 @Component
 public class BibliotecaApiClient {
@@ -42,6 +45,14 @@ public class BibliotecaApiClient {
                 .body(new ParameterizedTypeReference<PaginaLivros>() {});
     }
 
+    public LivroDTO consultarLivroPorId(String accessToken, UUID id) {
+        return api.get()
+                .uri("/livros/{id}", id)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                .retrieve()
+                .body(LivroDTO.class);
+    }
+
     public List<AutorDTO> consultarAutores(String accessToken, String nome, String nacionalidade) {
         return api.get()
                 .uri(builder -> {
@@ -57,5 +68,13 @@ public class BibliotecaApiClient {
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                 .retrieve()
                 .body(new ParameterizedTypeReference<List<AutorDTO>>() {});
+    }
+
+    public AutorDTO consultarAutorPorId(String accessToken, UUID id) {
+        return api.get()
+                .uri("/autores/{id}", id)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                .retrieve()
+                .body(AutorDTO.class);
     }
 }

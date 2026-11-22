@@ -29,13 +29,7 @@ import java.util.stream.Collectors;
 public class AutorController implements GenericController {
 
     private final AutorService service;
-    //Outra forma de obter o login private final SecurityService securityService;
     private final AutorMapper mapper;
-
-    //@RequiredArgsConstructor elimina a necessidade do construtor de campos "obrigatórios" (final)
-    //public AutorController(AutorService autorService){
-//        this.autorService = autorService;
-//    }
 
     @PostMapping
     @PreAuthorize("hasAuthority('GERENTE')")

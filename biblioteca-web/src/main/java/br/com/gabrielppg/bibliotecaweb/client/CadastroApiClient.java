@@ -31,6 +31,17 @@ public class CadastroApiClient {
                 .toBodilessEntity();
     }
 
+    public void atualizarAutor(String accessToken, UUID id, String nome,
+                               LocalDate nascimento, String nacionalidade) {
+        api.put()
+                .uri("/autores/{id}", id)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new AutorRequisicao(id, nome, nascimento, nacionalidade))
+                .retrieve()
+                .toBodilessEntity();
+    }
+
     public void cadastrarLivro(String accessToken, String isbn, String titulo,
                                LocalDate publicacao, String genero,
                                BigDecimal preco, UUID idAutor) {
@@ -42,6 +53,35 @@ public class CadastroApiClient {
                 .retrieve()
                 .toBodilessEntity();
     }
+
+    public void atualizarLivro(String accessToken, UUID id, String isbn, String titulo,
+                               LocalDate publicacao, String genero,
+                               BigDecimal preco, UUID idAutor) {
+        api.put()
+                .uri("/livros/{id}", id)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new LivroRequisicao(isbn, titulo, publicacao, genero, preco, idAutor))
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    public void deletarLivro(String accessToken, UUID id) {
+        api.delete()
+                .uri("/livros/{id}", id)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    public void deletarAutor(String accessToken, UUID id) {
+        api.delete()
+                .uri("/autores/{id}", id)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                .retrieve()
+                .toBodilessEntity();
+    }
+
 
     private record AutorRequisicao(UUID id, String nome,
                                   LocalDate dataNascimento, String nacionalidade) {}

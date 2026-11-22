@@ -27,5 +27,14 @@ public class Client {
     private String redirectURI;
 
     @Column(name="scope")
-        private String scope;
+    private String scope;
+
+    @Column(name = "ativo", nullable = false)
+    private boolean ativo = true;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_cliente", nullable = false, length = 20)
+    private TipoCliente tipoCliente;
+
+
 }

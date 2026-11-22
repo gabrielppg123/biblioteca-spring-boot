@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Segurança do cliente OAuth2 · Administração</title>
+    <link rel="stylesheet" th:href="@{/css/admin.css}">
+</head>
+<body>
+<header class="site-header"><strong>Biblioteca · Administração</strong>
+    <nav><a th:href="@{/admin}">Início</a><a th:href="@{/admin/usuarios}">Usuários</a>
+        <a th:href="@{/admin/clientes}">Clientes OAuth2</a></nav>
+</header>
+<main><div class="panel">
+    <h1>Segurança do cliente</h1>
+    <p class="muted">Client ID: <strong th:text="${clientId}">client-id</strong></p>
+    <p>Status: <span class="status" th:classappend="${ativo} ? ' active' : ' inactive'"
+                    th:text="${ativo} ? 'Ativo' : 'Inativo'">Ativo</span></p>
+    <p class="error" th:if="${erro}" th:text="${erro}"></p>
+    <div class="notice" th:if="${sucessoSeguranca}" th:text="${sucessoSeguranca}"></div>
+    <p class="note"><strong>Cuidado:</strong> se este cliente é usado pelo Biblioteca Web ou Postman,
+        renovar seu segredo ou desativá-lo interromperá novas autenticações até atualizar a configuração ou reativá-lo.
+        Tokens JWT já emitidos podem continuar válidos até expirar.</p>
+    <section class="security-section">
+        <h2>Alterar Client Secret</h2>
+        <p>Escolha como definir o novo segredo. <strong>A troca acontece quando você confirma o formulário</strong>.
+            Cancelar antes de enviar não altera nada. O segredo anterior deixa de funcionar em novas autenticações.</p>
+        <h3>Opção 1 — Gerar um segredo seguro automaticamente</h3>
+        <p>O servidor cria um segredo aleatório e o exibe <strong>uma única vez</strong>, depois da confirmação.</p>
+        <form method="post" th:action="@{/admin/clientes/{id}/renovar-segredo(id=${idCliente})}" autocomplete="off">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+            <div class="field">
+                <label for="confirmacaoRotacao">Digite o Client ID para confirmar</label>
+                <input id="confirmacaoRotacao" name="confirmacao" required
+                       th:placeholder="${clientId}" autocomplete="off">
+            </div>
+            <div class="actions">
+                <button type="submit" class="button">Gerar e salvar novo segredo</button>
+                <a class="button secondary" th:href="@{/admin/clientes}">Cancelar</a>
+            </div>
+        </form>
+
+        <h3>Opção 2 — Escolher meu próprio segredo</h3>
+        <p>Use um segredo exclusivo e difícil de adivinhar, preferencialmente criado em um gerenciador de senhas.
+            São necessários pelo menos 16 caracteres e no máximo 72 bytes em UTF-8.</p>
+        <form method="post" th:action="@{/admin/clientes/{id}/definir-segredo(id=${idCliente})}" autocomplete="off">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+            <div class="field">
+                <label for="novoSegredo">Novo Client Secret</label>
+                <input id="novoSegredo" name="novoSegredo" type="password" minlength="16"
+                       required autocomplete="new-password" spellcheck="false">
+            </div>
+            <div class="field">
+                <label for="confirmacaoNovoSegredo">Confirme o novo Client Secret</label>
+                <input id="confirmacaoNovoSegredo" name="confirmacaoNovoSegredo" type="password"
+                       minlength="16" required autocomplete="new-password" spellcheck="false">
+            </div>
+            <div class="field">
+                <label for="confirmacaoManual">Digite o Client ID para confirmar a alteração</label>
+                <input id="confirmacaoManual" name="confirmacao" required
+                       th:placeholder="${clientId}" autocomplete="off">
+            </div>
+            <div class="actions">
+                <button type="submit" class="button">Salvar meu novo segredo</button>
+                <a class="button secondary" th:href="@{/admin/clientes}">Cancelar</a>
+            </div>
+        </form>
+    </section>
+    <section class="security-section">
+        <h2 th:text="${ativo} ? 'Desativar cliente' : 'Reativar cliente'">Desativar cliente</h2>
+        <p th:if="${ativo}">Impede novas autenticações e novas emissões de tokens para este cliente.</p>
+        <p th:unless="${ativo}">Permite que o cliente volte a se autenticar com o segredo vigente.</p>
+        <form th:if="${ativo}" method="post" th:action="@{/admin/clientes/{id}/desativar(id=${idCliente})}" autocomplete="off">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+            <div class="field">
+                <label for="confirmacaoDesativacao">Digite o Client ID para confirmar</label>
+                <input id="confirmacaoDesativacao" name="confirmacao" required
+                       th:placeholder="${clientId}" autocomplete="off">
+            </div>
+            <div class="actions"><button type="submit" class="button">Desativar cliente</button></div>
+        </form>
+        <form th:unless="${ativo}" method="post" th:action="@{/admin/clientes/{id}/reativar(id=${idCliente})}" autocomplete="off">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+            <div class="field">
+                <label for="confirmacaoReativacao">Digite o Client ID para confirmar</label>
+                <input id="confirmacaoReativacao" name="confirmacao" required
+                       th:placeholder="${clientId}" autocomplete="off">
+            </div>
+            <div class="actions"><button type="submit" class="button">Reativar cliente</button></div>
+        </form>
+    </section>
+    <div class="actions"><a class="button secondary" th:href="@{/admin/clientes}">Voltar à lista</a></div>
+</div></main>
+</body>
+</html>

@@ -27,8 +27,9 @@ public class SecurityConfiguration {
             .oauth2Login(oauth2 -> oauth2.loginPage("/login").successHandler(googleHandler))
             .authorizeHttpRequests(auth -> auth
                 .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
-                .requestMatchers("/login", "/oauth2/authorization/google",
-                    "/login/oauth2/code/google", "/actuator/health", "/actuator/info")
+                    .requestMatchers("/login", "/oauth2/authorization/google",
+                            "/login/oauth2/code/google", "/actuator/health", "/actuator/info",
+                            "/.well-known/appspecific/**")
                 .permitAll()
                 .anyRequest().authenticated())
             .build();

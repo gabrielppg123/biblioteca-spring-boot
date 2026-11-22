@@ -6,6 +6,7 @@ import br.com.gabrielppg.authorizationserver.service.UsuarioService;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
 import lombok.RequiredArgsConstructor;
 
@@ -73,6 +74,17 @@ public class LoginSocialSuccessHandler
             usuario.setRoles(List.of("OPERADOR"));
 
             usuarioService.salvar(usuario);
+        }
+
+        // A conta desativada não pode abrir nova sessão, mesmo via Google.
+        if (!usuario.isAtivo()) {
+            SecurityContextHolder.clearContext();
+            HttpSession sessao = request.getSession(false);
+            if (sessao != null) {
+                sessao.invalidate();
+            }
+            response.sendRedirect(request.getContextPath() + "/login?error");
+            return;
         }
 
         // Converte a identidade Google para a autenticação interna

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Clientes OAuth2 · Administração</title>
+    <link rel="stylesheet" th:href="@{/css/admin.css}">
+</head>
+<body>
+<header class="site-header">
+    <strong>Biblioteca · Administração</strong>
+    <nav>
+        <a th:href="@{/admin}">Início</a>
+        <a th:href="@{/admin/usuarios}">Usuários</a>
+        <a th:href="@{/admin/clientes}">Clientes OAuth2</a>
+    </nav>
+</header>
+<main>
+    <div class="panel">
+        <h1>Clientes OAuth2</h1>
+        <p class="muted">Pesquise, edite e gerencie os clientes que utilizam o Authorization Server.</p>
+        <div class="notice" th:if="${sucesso}" th:text="${sucesso}"></div>
+        <p class="error" th:if="${erro}" th:text="${erro}"></p>
+        <form class="search-form" th:action="@{/admin/clientes}" method="get">
+            <div class="field search-field">
+                <label for="busca">Client ID ou UUID</label>
+                <input id="busca" name="busca" type="search" th:value="${busca}"
+                       placeholder="Pesquisar por client_id ou ID">
+            </div>
+            <div class="actions">
+                <button type="submit" class="button">Pesquisar</button>
+                <a class="button secondary" th:href="@{/admin/clientes}">Limpar</a>
+                <a class="button secondary" th:href="@{/admin/clientes/novo}">Novo cliente</a>
+            </div>
+        </form>
+        <div class="table-scroll">
+            <table>
+                <thead><tr>
+                    <th>Client ID</th><th>Tipo</th><th>Status</th><th>Scopes</th>
+                    <th>Redirect URI</th><th>Ações</th>
+                </tr></thead>
+                <tbody>
+                    <tr th:each="c : ${clientes}">
+                        <td>
+                            <strong th:text="${c.clientId}">cliente</strong>
+                            <small class="user-id" th:text="${c.id}">UUID</small>
+                        </td>
+                        <td th:text="${c.tipoCliente}">INTERATIVO</td>
+                        <td>
+                            <span class="status" th:classappend="${c.ativo} ? ' active' : ' inactive'"
+                                  th:text="${c.ativo} ? 'Ativo' : 'Inativo'">Ativo</span>
+                        </td>
+                        <td th:text="${c.scopes}">openid</td>
+                        <td th:text="${c.redirectUri != null ? c.redirectUri : '—'}">—</td>
+                        <td>
+                            <div class="table-actions">
+                                <a th:href="@{/admin/clientes/{id}/editar(id=${c.id})}">Editar</a>
+                                <a th:href="@{/admin/clientes/{id}/seguranca(id=${c.id})}">Segurança</a>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(clientes)}">
+                        <td colspan="6">Nenhum cliente encontrado.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="note"><strong>Importante:</strong> o Client ID e o segredo armazenado não são editados aqui.
+            A alteração do Client Secret (gerado ou escolhido) e a ativação/desativação ficam na seção Segurança.
+            Tokens JWT já emitidos podem permanecer válidos até a expiração.</p>
+    </div>
+</main>
+</body>
+</html>
