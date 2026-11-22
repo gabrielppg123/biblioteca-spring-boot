@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -e
+
+cd "$(git rev-parse --show-toplevel)"
+
+echo "Verificando seguranca antes do push..."
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+    echo "ERRO: Gitleaks nao instalado. Push bloqueado."
+    exit 1
+fi
+
+gitleaks git --redact --log-opts="--all" .
+
+echo "Auditoria de segredos aprovada."
