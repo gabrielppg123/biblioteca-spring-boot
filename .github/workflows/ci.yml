@@ -1,0 +1,47 @@
+name: Biblioteca - Integracao Continua
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-e-testes:
+    name: ${{ matrix.modulo }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    strategy:
+      fail-fast: false
+      matrix:
+        modulo:
+          - authorization-server
+          - biblioteca-api
+          - biblioteca-web
+
+    steps:
+      - name: Baixar codigo
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Configurar Java 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: ${{ matrix.modulo }}/pom.xml
+
+      - name: Verificar Java e Maven
+        run: |
+          java -version
+          mvn -version
+
+      - name: Compilar e executar testes
+        run: mvn --batch-mode --no-transfer-progress -f "${{ matrix.modulo }}/pom.xml" clean verify
