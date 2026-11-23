@@ -1,0 +1,95 @@
+name: biblioteca-local
+
+services:
+  postgres:
+    image: postgres:16.3
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD em docker/.env}
+      POSTGRES_DB: authorization_db
+    ports:
+      # Porta diferente de 5432: nao conflita com o PostgreSQL antigo.
+      - "127.0.0.1:15433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/01-create-biblioteca-db.sql:/docker-entrypoint-initdb.d/01-create-biblioteca-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d authorization_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+    networks:
+      - interna
+
+  authorization-server:
+    build:
+      context: ../authorization-server
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DATASOURCE_URL: jdbc:postgresql://postgres:5432/authorization_db
+      DATASOURCE_USERNAME: postgres
+      DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD em docker/.env}
+      AUTH_SERVER_ISSUER: http://localhost:9000
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?Defina GOOGLE_CLIENT_ID em docker/.env}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:?Defina GOOGLE_CLIENT_SECRET em docker/.env}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:9000:9000"
+    networks:
+      - interna
+
+  biblioteca-api:
+    build:
+      context: ../biblioteca-api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DATASOURCE_URL: jdbc:postgresql://postgres:5432/biblioteca_db
+      DATASOURCE_USERNAME: postgres
+      DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD em docker/.env}
+      BIBLIOTECA_API_PORT: '8080'
+      BIBLIOTECA_ACTUATOR_PORT: '9090'
+      AUTH_SERVER_ISSUER: http://localhost:9000
+      AUTH_SERVER_JWKS_URI: http://authorization-server:9000/oauth2/jwks
+      BIBLIOTECA_JWT_AUDIENCE: biblioteca-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      authorization-server:
+        condition: service_started
+    ports:
+      - "127.0.0.1:8080:8080"
+    networks:
+      - interna
+
+  biblioteca-web:
+    build:
+      context: ../biblioteca-web
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      BIBLIOTECA_WEB_CLIENT_ID: ${BIBLIOTECA_WEB_CLIENT_ID:?Defina o client_id existente em docker/.env}
+      BIBLIOTECA_WEB_CLIENT_SECRET: ${BIBLIOTECA_WEB_CLIENT_SECRET:?Defina o Client Secret existente em docker/.env}
+      BIBLIOTECA_AUTH_ISSUER: http://localhost:9000
+      BIBLIOTECA_API_URL: http://biblioteca-api:8080
+    depends_on:
+      authorization-server:
+        condition: service_started
+      biblioteca-api:
+        condition: service_started
+    ports:
+      - "127.0.0.1:8081:8081"
+    networks:
+      - interna
+
+volumes:
+  postgres_data:
+
+networks:
+  interna:
+    driver: bridge

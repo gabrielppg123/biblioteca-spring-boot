@@ -28,7 +28,7 @@ COPY --from=build /build/target/*.jar /app/biblioteca-api.jar
 
 USER 10001
 
-EXPOSE 8082
+EXPOSE 8080
 
 ENV TZ=America/Sao_Paulo
 
