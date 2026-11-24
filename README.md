@@ -1,117 +1,139 @@
-# Migração controlada: Biblioteca API como Resource Server
+# Biblioteca — Java Back-end, OAuth2/OIDC e Docker
 
-## O que contém
+Sistema de gestão de biblioteca construído com **Java 21**, **Spring Boot 4.1.2** e **PostgreSQL**, organizado em três aplicações independentes: servidor de autorização OAuth2/OIDC, API REST e interface web. O projeto reúne autenticação e autorização, integração entre serviços, testes automatizados, Docker e integração contínua.
 
-- `biblioteca-api/`: **novo projeto** Resource Server Java 21 / Spring Boot 4.1.2. Porta **8082** para testar sem encostar na Biblioteca original (8080).
-- `authorization-server/`: cópia da etapa 1 na porta **9000**, alterada **somente** para incluir `aud=biblioteca-api` nos ACCESS tokens. O claim `usuario_id` já existia nessa versão.
-- `biblioteca-web/`: cópia base da Web na porta **8081**, apontando para **9000** para login e **8082** para API; mantém cookie único e scope `openid`.
-- `patches/AuthorizationServerConfiguration.patch`: diferença mínima para aplicar ao servidor 9000 que você já testou.
-- `docs/fluxos/`: 3 diagramas Mermaid editáveis no Obsidian.
+> **Status:** aplicações integradas e validadas em desenvolvimento (DEV) e homologação (HML) com Docker Compose. Pipeline de CI aprovado no GitHub Actions.
 
-## Sem risco para o seu sistema funcional
+## Arquitetura
 
-A aplicação **original :8080 não deve ser alterada nem desligada antes do teste**. Execute uma cópia nova da API em `:8082`. A Web atual pode continuar funcionando com `:8080` até você decidir trocar suas variáveis de ambiente.
-
-## Passo 1 — Authorization Server (9000)
-
-1. Abra **seu** Authorization Server funcional.
-2. Em `AuthorizationServerConfiguration.tokenCustomizer()`, adicione no início do lambda, após `var principal = context.getPrincipal();`:
-
-   ```java
-   if (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) {
-       context.getClaims().audience(List.of("biblioteca-api"));
-   }
-   ```
-
-3. Confirme que o mesmo customizer **já** preenche `usuario_id` no ACCESS_TOKEN de usuário:
-
-   ```java
-   .claim("usuario_id", authentication.getUsuario().getId().toString());
-   ```
-
-4. Reinicie somente o Authorization Server. Tokens obtidos antes da mudança não têm a nova audiência: faça **novo login** para obter outro access token.
-5. O `id_token` OIDC **não recebe** `aud=biblioteca-api` neste patch. Ele segue destinado ao client web.
-
-> Na sua máquina, prefira o `patches/AuthorizationServerConfiguration.patch` a substituir o projeto inteiro. Você pode ter alterações locais não incluídas aqui.
-
-## Passo 2 — Biblioteca API nova (8082)
-
-1. Abra `biblioteca-api/` como projeto Maven separado no IntelliJ.
-2. Use as credenciais **existentes** do PostgreSQL na configuração de execução do IntelliJ (não salvar no Git):
-
-   ```dotenv
-   DATASOURCE_URL=jdbc:postgresql://localhost:5432/SEU_BANCO
-   DATASOURCE_USERNAME=SEU_USUARIO
-   DATASOURCE_PASSWORD=SUA_SENHA
-   AUTH_SERVER_ISSUER=http://localhost:9000
-   AUTH_SERVER_JWKS_URI=http://localhost:9000/oauth2/jwks
-   ```
-
-3. Inicie `Inicio.java`. **Confira `http://localhost:9092/actuator/health` (Actuator separado).**
-4. Sem token, `GET http://localhost:8082/livros` deve dar **401**.
-5. A API nova **não** disponibiliza `/login`, `/oauth2/token`, `/usuarios`, `/clients` nem `/oauth2/authorization/google`.
-
-## Passo 3 — Biblioteca Web (8081)
-
-No projeto **Web que já está funcionando** (não é obrigatório substituí-lo pelo diretório `biblioteca-web/`), configure:
-
-```dotenv
-BIBLIOTECA_AUTH_ISSUER=http://localhost:9000
-BIBLIOTECA_API_URL=http://localhost:8082
-BIBLIOTECA_WEB_CLIENT_ID=biblioteca-web
-BIBLIOTECA_WEB_CLIENT_SECRET=SEU_SEGREDO_ORIGINAL
+```mermaid
+flowchart LR
+    U[Usuário / navegador] --> W[Biblioteca Web :8081]
+    U <-->|Login e consentimento| AS[Authorization Server :9000]
+    W <-->|OAuth2 / OIDC| AS
+    W -->|Access token JWT| API[Biblioteca API :8080]
+    API -->|Consulta JWKS| AS
+    AS --> D1[(authorization_db)]
+    API --> D2[(biblioteca_db)]
 ```
 
-Verifique em `src/main/resources/application.yml`:
+| Módulo | Responsabilidade | Tecnologias principais |
+| --- | --- | --- |
+| `authorization-server/` | Login local e com Google, emissão de tokens OAuth2/OIDC e administração de usuários e clientes | Spring Security, Spring Authorization Server, PostgreSQL |
+| `biblioteca-api/` | Endpoints REST de autores e livros; validação de JWT; autorização; acesso aos dados | Spring Web, Spring Security Resource Server, JPA/Hibernate, PostgreSQL |
+| `biblioteca-web/` | Interface MVC para consulta e manutenção do acervo; login OAuth2 e consumo da API | Spring MVC, Thymeleaf, OAuth2 Client |
 
-- `scope: openid` (o cliente `biblioteca-web` foi cadastrado somente com `openid`).
-- `server.servlet.session.cookie.name: BIBLIOTECA_WEB_SESSION` para não colidir com o cookie do servidor de identidade.
-- O callback continua `http://localhost:8081/login/oauth2/code/biblioteca`; **não** precisa mudar o cadastro do cliente OAuth2.
+A Web **não tem banco de dados próprio**. O Authorization Server e a API utilizam **bancos lógicos distintos** (`authorization_db` e `biblioteca_db`). Na HML, ambos ficam em uma instância PostgreSQL isolada dentro do Compose.
 
-Reinicie a Web. Abra uma **janela anônima**, entre com login local e depois Google. Acesse `/livros` e `/autores`.
+## Funcionalidades
 
-## Passo 4 — Testes esperados
+- Login com usuário/senha e login social com Google.
+- OAuth2 Authorization Code com PKCE, OpenID Connect e autenticação de clientes (`client_credentials`).
+- API REST com consulta, filtros, paginação, cadastro, edição e exclusão de autores e livros.
+- Interface web com formulários, validações e mensagens de erro.
+- Área administrativa de usuários e clientes OAuth2 no Authorization Server.
+- Auditoria de operações baseada na identificação do usuário autenticado.
 
-| Ação | Resultado esperado |
-|---|---|
-| `GET /livros` na API 8082 sem token | 401 |
-| Access token novo da porta 9000 com `aud=biblioteca-api` e usuário `OPERADOR` | 200 em GET livros/autores |
-| Token com `iss` diferente ou assinatura de :8080 | 401 |
-| Token válido de outra audiência | 401 |
-| Token client_credentials sem scope `biblioteca.read` | 403 em GET (token validado, acesso negado) |
-| Token client_credentials com scope `biblioteca.read` | 200 em GET; 403 em POST/PUT/DELETE |
-| Login local e Google pela Web 8081 apontando para 9000 | Consultas funcionam |
-| POST /autores como GERENTE | 201, `id_usuario` com UUID do JWT |
-| POST /autores como OPERADOR | 403 |
+### Autorização
 
-> O teste de integração de máquina requer **um cliente OAuth2 cadastrado com `biblioteca.read`**. `client_credentials` de um cliente que só tem `openid` não basta. Não reutilize o cliente da Web para integrações.
+| Ação na API | GERENTE | OPERADOR | Cliente `biblioteca.read` |
+| --- | :---: | :---: | :---: |
+| Consultar autores e livros | ✅ | ✅ | ✅ |
+| Criar, editar e excluir autores | ✅ | ❌ | ❌ |
+| Criar, editar e excluir livros | ✅ | ✅ | ❌ |
 
-## PostgreSQL: escolha segura para esta etapa
+A API valida a **assinatura JWT via JWKS**, o emissor (`iss`), a audiência (`aud`) e os tempos de validade. Autoridades humanas (`GERENTE`, `OPERADOR`) são tratadas separadamente dos escopos de clientes de integração (`SCOPE_biblioteca.read`).
 
-O Authorization Server e a API **ainda compartilham o banco existente nesta fase** para manter os dados e não quebrar as FKs SQL já presentes na tabela `autor` e `livro`. Porém, o código da nova API **não contém** entidade `Usuario` e **não consulta** a tabela `usuario` para autenticação.
+## Tecnologias e práticas
 
-O arquivo `biblioteca-api/database/schema.sql` descreve a estrutura **para uma base nova independente**, sem a FK com `usuario`. **Não execute esse script agora no banco atual**. O script `migracao_futura_remover_fk_usuario.sql` é apenas para a futura separação física, quando teremos backup e plano de migração de dados.
+**Java 21 · Spring Boot 4.1.2 · Spring Security · OAuth2/OIDC · JWT · Spring MVC · Thymeleaf · Spring Data JPA/Hibernate · PostgreSQL · Docker/Docker Compose · Maven · JUnit 5 · Mockito · Testcontainers · GitHub Actions · Gitleaks · Swagger/OpenAPI**
 
-## Testes e build
+## Executando localmente (DEV e HML)
 
-Dentro de `biblioteca-api/` no Windows:
+Pré-requisitos: Java 21 e Maven para execução pelo IntelliJ; Docker Desktop com Compose v2 para homologação. Para autenticação, são necessárias credenciais de teste do Google e um cliente OAuth2 interativo previamente configurado, com seu segredo original. **Não inclua credenciais reais no Git.**
 
-```powershell
-.\mvnw.cmd clean test
+| Serviço | DEV (IntelliJ) | HML (Docker Compose) |
+| --- | --- | --- |
+| Authorization Server | `http://localhost:9000` | `http://localhost:9000` |
+| Biblioteca API | `http://localhost:8080` | `http://localhost:8080` |
+| Biblioteca Web | `http://localhost:8081` | `http://localhost:8081` |
+| PostgreSQL | Porta `5432` no computador | Porta `15433` no computador; `5432` na rede Docker |
+
+**Atenção:** DEV e HML utilizam as mesmas portas HTTP. Interrompa os aplicativos DEV antes de iniciar a HML. Os bancos PostgreSQL são independentes.
+
+### Homologação com Docker Compose
+
+Na raiz do repositório:
+
+```bash
+cp docker/.env.example docker/.env
 ```
 
-O ZIP inclui `.mvn/wrapper/maven-wrapper.properties` ausente do RAR original, para o wrapper Maven funcionar. O teste Testcontainers precisa do Docker Desktop em execução. **O código não foi compilado nem testado com Maven neste ambiente.**
+Preencha `docker/.env` localmente, conforme as variáveis de exemplo. O arquivo real e os backups ficam ignorados pelo Git.
 
-## Rollback
+```bash
+docker compose --env-file docker/.env -f docker/compose.yaml config --quiet
+docker compose --env-file docker/.env -f docker/compose.yaml up -d postgres
+```
 
-Se a Web não autenticar ou consultar, restaure suas variáveis originais `BIBLIOTECA_AUTH_ISSUER=http://localhost:8080` e `BIBLIOTECA_API_URL=http://localhost:8080`, reinicie a Web e use a Biblioteca original. Não exclua a versão anterior enquanto estiver testando.
+O ambiente de homologação foi validado com bases PostgreSQL isoladas. Para iniciar com o conjunto de dados atual, prepare os bancos e os clientes OAuth2 antes de subir os serviços, seguindo o guia **[`docker/README.md`](docker/README.md)**. Os backups usados nos testes não são distribuídos no repositório por segurança.
 
-## Observações técnicas para entrevista
+Após preparar os bancos:
 
-- O Authorization Server é o provedor de identidade e emissor de JWTs.
-- A Biblioteca API é um Resource Server stateless: valida RS256 via JWKS + `iss` + `aud` + tempos de validade.
-- A Web é o cliente OAuth2 que guarda os tokens do lado servidor e usa cookie de sessão no navegador.
-- Roles humanas `GERENTE`/`OPERADOR` são separadas de scopes de aplicações (`biblioteca.read`).
-- `id_usuario` permanece como referência de auditoria, não como relacionamento JPA cruzado.
-- Limitação didática: chaves RSA são geradas novamente a cada reinício do Authorization Server, invalidando tokens anteriores. No projeto Nexus Commerce será tratada persistência/rotação das chaves.
-- Limitação pendente: `RegisteredClientRepository` atual ainda atribui os mesmos tipos de grant para todos os clientes. Refinar isso em etapa posterior.
+```bash
+docker compose --env-file docker/.env -f docker/compose.yaml up -d --build
+docker compose --env-file docker/.env -f docker/compose.yaml ps
+```
+
+Acesse a Web em **http://localhost:8081**, o painel administrativo em **http://localhost:9000/admin** e a documentação da API em **http://localhost:8080/swagger-ui/index.html**.
+
+Para desligar os serviços sem apagar o volume PostgreSQL:
+
+```bash
+docker compose --env-file docker/.env -f docker/compose.yaml down
+```
+
+## Testes e integração contínua
+
+Os resultados da última validação registrada foram:
+
+- **Authorization Server:** 33 testes automatizados aprovados.
+- **Biblioteca API:** 35 testes automatizados aprovados, incluindo teste de integração com PostgreSQL via Testcontainers.
+- **Biblioteca Web:** build validado no pipeline; fluxos de login local/Google, consulta e edição validados manualmente em HML.
+- **GitHub Actions:** workflow Maven para as três aplicações, aprovado no commit `157d94d`.
+- **Gitleaks:** varredura de segredos configurada antes do `git push`.
+
+Para executar as verificações Maven a partir da raiz do repositório:
+
+```bash
+mvn -f authorization-server/pom.xml clean verify
+mvn -f biblioteca-api/pom.xml clean verify
+mvn -f biblioteca-web/pom.xml clean verify
+```
+
+**O teste com Testcontainers precisa de um Docker Engine disponível.** Consulte também o workflow em `.github/workflows/ci.yml`.
+
+## Decisões de arquitetura
+
+- **Autenticação centralizada:** a API não realiza login nem emite tokens; atua como Resource Server stateless.
+- **Autorização explícita:** endpoints protegidos com Spring Method Security e separação de roles humanas e scopes de clientes.
+- **Dois bancos lógicos:** identidades/clientes OAuth2 separados dos dados de autores e livros.
+- **OAuth2 no Docker:** URLs acessadas pelo navegador usam `localhost`, enquanto a comunicação entre contêineres utiliza nomes dos serviços Docker.
+- **Projeto intencionalmente delimitado:** o foco está na segurança, integração, qualidade e operação.
+
+## Próximas evoluções
+
+- Automatizar a preparação de dados de demonstração para execução a partir de um clone limpo.
+- Ampliar os testes automatizados da interface web.
+- Preparar a publicação na AWS com HTTPS, gerenciamento de segredos e persistência/rotação de chaves JWT.
+
+## Organização do repositório
+
+```text
+authorization-server/  # Autenticação, OIDC e administração
+biblioteca-api/        # API REST, regras de negócio e dados
+biblioteca-web/        # Aplicação MVC/Thymeleaf
+docker/                # Compose, script de criação de banco e guia HML
+docs/                  # Diagramas e documentos técnicos
+.github/workflows/     # Integração contínua
+```
