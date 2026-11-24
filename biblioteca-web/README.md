@@ -1,22 +1,24 @@
-# Biblioteca Web — Integração com Authorization Server separado
+# Biblioteca Web — OAuth2 Client e interface MVC
 
-Nesta entrega, a Web roda na porta `8081` e realiza login via Authorization Server `9000`, usando `Authorization Code + PKCE`. Consulta a Biblioteca API Resource Server na porta `8082` via JWT Bearer no servidor, não no navegador.
+Aplicação Java 21 / Spring Boot 4.1.2 com Spring MVC e Thymeleaf, executada localmente na **porta 8081**.
 
-## Configuração e ordem de execução
+- Autenticação via Authorization Server (`http://localhost:9000`) com OAuth2 Authorization Code + PKCE e OIDC.
+- Login local e Google são tratados pelo Authorization Server, não diretamente pela Web.
+- Consumo da Biblioteca API (`http://localhost:8080`) com access token do usuário no lado servidor.
+- Cookie de sessão separado: `BIBLIOTECA_WEB_SESSION`.
+- Não utiliza banco de dados próprio.
 
-1. Inicie o Authorization Server `9000`, **após aplicar o patch de audiência dos JWTs**.
-2. Inicie a Biblioteca API `8082`, apontando para JWKS de `9000`.
-3. Inicie a Web `8081` com variáveis:
+## Configuração local
 
-```text
+Defina as variáveis de ambiente de acordo com `.env.example`, sem registrar segredos no Git:
+
+```dotenv
 BIBLIOTECA_AUTH_ISSUER=http://localhost:9000
-BIBLIOTECA_API_URL=http://localhost:8082
-BIBLIOTECA_WEB_CLIENT_ID=biblioteca-web
+BIBLIOTECA_API_URL=http://localhost:8080
+BIBLIOTECA_WEB_CLIENT_ID=SEU_CLIENT_ID_INTERATIVO
 BIBLIOTECA_WEB_CLIENT_SECRET=SEU_SEGREDO_ORIGINAL
 ```
 
-O callback cadastrado na tabela `client` permanece `http://localhost:8081/login/oauth2/code/biblioteca`. Scope `openid` e cookie `BIBLIOTECA_WEB_SESSION` já estão configurados no `application.yml` deste pacote.
+O cliente OAuth2 precisa existir previamente no banco `authorization_db`, com escopo `openid` e callback `http://localhost:8081/login/oauth2/code/biblioteca`.
 
-Abra uma janela anônima do navegador e acesse `http://localhost:8081`. Teste login local e Google e navegue em livros e autores. O Google é integrado **somente ao Authorization Server**, pelo callback `http://localhost:9000/login/oauth2/code/google`, já validado no seu Google Cloud.
-
-> Se preferir atualizar seu projeto Web atual, basta ajustar as variáveis e conferir o cookie/scope, sem substituir o código. Leia o README da raiz do pacote.
+Para executar a HML com Docker Compose, utilize as instruções do [guia Docker](../docker/README.md). Nesse perfil, as comunicações internas usam nomes de serviços Docker, mantendo as URLs de navegador em `localhost`.

@@ -1,19 +1,20 @@
-# Fluxo 03 — Authorization Server isolado (etapa 1)
+# Fluxo — Autenticação centralizada (arquitetura atual)
 
 ```mermaid
 flowchart TD
-    H["Usuário / navegador"] --> AS["Authorization Server :9000"]
-    AS --> Escolha{"Forma de login"}
-    Escolha -->|Senha| Local["CustomAuthenticationProvider"]
-    Escolha -->|Google| Social["Google OIDC → LoginSocialSuccessHandler"]
-    Local --> Usuario["UsuarioService → PostgreSQL: usuario"]
+    H["Usuário / navegador"] --> W["Biblioteca Web :8081"]
+    W --> AS["Authorization Server :9000"]
+    AS --> Escolha{"Login local ou Google?"}
+    Escolha -->|Local| Local["CustomAuthenticationProvider"]
+    Escolha -->|Google| Social["LoginSocialSuccessHandler"]
+    Local --> Usuario["UsuarioService / authorization_db"]
     Social --> Usuario
-    Usuario --> Sessao["Sessão no Auth Server"]
-    Sessao --> Authorize["/oauth2/authorize: Authorization Code + PKCE"]
-    Authorize --> Token["/oauth2/token"]
-    Token --> Assinatura["JWK RSA → access_token / id_token"]
-    AsR["Biblioteca original :8080"] -.- X["Ainda não aponta para :9000"]
-    Web["Biblioteca Web :8081"] -.- X
+    Usuario --> Sessao["Sessão de autenticação no Authorization Server"]
+    Sessao --> Token["Authorization Code + PKCE / tokens OAuth2-OIDC"]
+    Token --> W
+    W -->|"Access token JWT"| API["Biblioteca API :8080"]
+    API --> Dados["biblioteca_db"]
+    API -.->|"JWKS / issuer / audience"| AS
 ```
 
-Neste checkpoint, a autenticação no `:9000` é independente **como processo**, mas usa temporariamente as tabelas `usuario` e `client` do PostgreSQL antigo. A Web continua usando `:8080` até a próxima etapa. Não trocar o issuer antes de preparar a Biblioteca API.
+O Authorization Server gerencia identidade e clientes OAuth2, enquanto a API gerencia o domínio Biblioteca. A Web não armazena dados de negócio em banco próprio.

@@ -1,19 +1,27 @@
-# ADR-001 — Separar autenticação e recursos de negócio
+# ADR-001 — Separação entre autenticação e API de negócio
 
-## Decisão
-Criar Authorization Server dedicado na porta local 9000, responsável por autenticar pessoas (senha/Google), manter clientes OAuth2, publicar JWKs e emitir tokens. Posteriormente, a Biblioteca API na porta 8080 será somente Resource Server, e a Biblioteca Web na porta 8081 será cliente OAuth2 confidencial.
+**Estado: implementada.** Este registro documenta uma decisão arquitetural já executada.
 
-## Por que
-Uma única aplicação acumulava login por sessão, autenticação federada, emissão e validação de JWT, CRUD de livros e autorização de clientes, dificultando o entendimento e a manutenção.
+## Contexto
 
-## Estrutura de implantação
-- Etapa 1: novos processos separados, banco **temporariamente compartilhado**, Web ainda conectada ao emissor antigo
-- Etapa 2: redirecionar a Web para o novo issuer (após configurar cliente OAuth2 e callbacks)
-- Etapa 3: API Resource Server valida `issuer`, assinatura, `aud` e permissões sem depender de sessão, e a identidade se relaciona por UUID
-- Etapa 4: separar tabelas `usuario` e `client` em banco de identidade próprio, preservar UUIDs existentes; planejar migração das FKs do domínio
+A aplicação inicial reunia login por sessão, autenticação federada, emissão de tokens, CRUD de livros/autores e validação de JWT no mesmo processo.
 
-## Limitações temporárias
-- `OAuth2AuthorizationService` usa armazenamento efêmero; códigos/tokens/autorizações não sobrevivem a reinício sem solução posterior.
-- RSA é gerada na inicialização para este projeto de demonstração; tokens anteriores deixam de ser verificáveis após reiniciar.
-- O registro de clientes atual permite múltiplos grants indiscriminadamente: separar clientes humanos e automações posteriormente.
-- A URI externa e HTTPS devem ser revistas no deploy AWS; a configuração atual é **apenas local**.
+## Decisão implementada
+
+Separar três aplicações:
+
+- `authorization-server` (porta `9000`): usuários, clientes OAuth2, login local e Google, OAuth2/OIDC e assinatura de tokens.
+- `biblioteca-api` (porta `8080`): API REST stateless, Resource Server e validação de JWT (JWKS, issuer, audience e expiração).
+- `biblioteca-web` (porta `8081`): cliente OAuth2 com Spring MVC e Thymeleaf.
+
+Os dados de identidade ficam em `authorization_db`; autores e livros ficam em `biblioteca_db`. A API registra `usuario_id` como UUID de auditoria, sem dependência de uma entidade JPA `Usuario`.
+
+Clientes `INTERATIVO` e `INTEGRACAO` têm grants distintos: Authorization Code/Refresh Token e Client Credentials, respectivamente. PKCE é exigido para clientes interativos.
+
+## Evoluções para implantação pública
+
+- Persistir/gerenciar as chaves de assinatura JWT, atualmente geradas ao iniciar o Authorization Server.
+- Configurar issuer e redirecionamentos com domínio e HTTPS.
+- Definir persistência das autorizações OAuth2, políticas de sessão e segredos para a infraestrutura de implantação.
+
+Veja o [README principal](../../../README.md) para o estado atual do projeto e execução em DEV/HML.

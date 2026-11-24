@@ -1,11 +1,14 @@
 # Biblioteca API — Resource Server
 
-Esta é a versão refatorada da aplicação `biblioteca_21_11.rar`, para executar na porta **8082** como Resource Server independente.
+API REST Java 21 / Spring Boot 4.1.2 para gestão de livros e autores.
 
-- Recebe JWTs emitidos pelo Authorization Server :9000 e validados via JWKS, emissor e audiência.
-- Endpoints de autores e livros continuam com os mesmos DTOs/contratos e paginação.
-- `usuario` / `client` / login / emissão de token foram removidos da API.
-- O UUID de auditoria (`id_usuario`) é obtido do claim `usuario_id` no JWT.
-- `GET` de livros/autores aceita roles humanas ou `SCOPE_biblioteca.read`. A escrita exige role humana.
+- **Porta local:** `8080` (DEV e HML; veja o README da raiz).
+- **Banco:** `biblioteca_db`, independente do banco do Authorization Server.
+- **Autenticação:** Bearer JWT emitido pelo Authorization Server na porta `9000`.
+- **Validação:** assinatura via JWKS, emissor, audiência `biblioteca-api` e validade.
+- **Autorização:** `GERENTE` gerencia autores; `GERENTE` e `OPERADOR` gerenciam livros; `biblioteca.read` permite somente consultas.
+- **Auditoria:** UUID do usuário extraído do token, sem relacionamento JPA com a entidade de identidade.
 
-**Leia o README.md da pasta acima antes de integrar.** Não substitua o banco de dados agora.
+Execute as verificações com `mvn clean verify` nesta pasta. O teste de integração com PostgreSQL utiliza Testcontainers e precisa do Docker disponível.
+
+Para iniciar as três aplicações, consulte o [README principal](../README.md) e o [guia Docker](../docker/README.md). O ambiente HML ainda utiliza a restauração de bases previamente preparadas; o repositório não contém dados privados nem segredos.
