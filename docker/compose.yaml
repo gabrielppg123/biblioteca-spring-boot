@@ -8,12 +8,18 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD em docker/.env}
       POSTGRES_DB: authorization_db
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:?Defina BOOTSTRAP_ADMIN_PASSWORD em docker/.env}
+      BIBLIOTECA_WEB_CLIENT_ID: ${BIBLIOTECA_WEB_CLIENT_ID:?Defina BIBLIOTECA_WEB_CLIENT_ID em docker/.env}
+      BIBLIOTECA_WEB_CLIENT_SECRET: ${BIBLIOTECA_WEB_CLIENT_SECRET:?Defina BIBLIOTECA_WEB_CLIENT_SECRET em docker/.env}
     ports:
       # Porta diferente de 5432: nao conflita com o PostgreSQL antigo.
       - "127.0.0.1:15433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./postgres/01-create-biblioteca-db.sql:/docker-entrypoint-initdb.d/01-create-biblioteca-db.sql:ro
+      - ./postgres/02-init-authorization.sql:/docker-entrypoint-initdb.d/02-init-authorization.sql:ro
+      - ./postgres/03-init-biblioteca-api.sql:/docker-entrypoint-initdb.d/03-init-biblioteca-api.sql:ro
+      - ../biblioteca-api/database/schema.sql:/opt/biblioteca/schema-api.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d authorization_db"]
       interval: 5s

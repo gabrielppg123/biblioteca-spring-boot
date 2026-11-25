@@ -1,5 +1,7 @@
 # Fluxo 01 — Login e consulta com três aplicações
 
+O navegador inicia a autenticação pela Biblioteca Web. O Authorization Server autentica o usuário e emite tokens; a Web utiliza o access token para consultar a API. Login Google é opcional.
+
 ```mermaid
 sequenceDiagram
     actor Usuario
@@ -12,22 +14,24 @@ sequenceDiagram
 
     Usuario->>Web: Abre /livros
     Web-->>Usuario: Redireciona para autenticação
-    Usuario->>Auth: Senha local ou login Google
+    Usuario->>Auth: Login com senha ou Google
     opt Login Google
         Auth->>Google: Autenticação OIDC
         Google-->>Auth: Identidade validada
     end
-    Auth->>Identidade: Consulta/cria usuário
-    Auth-->>Web: Authorization Code (redirect :8081)
-    Web->>Auth: Troca code por tokens (PKCE + client secret)
+    Auth->>Identidade: Localiza ou cadastra identidade
+    Auth-->>Web: Authorization Code
+    Web->>Auth: Troca code por tokens (PKCE)
     Auth-->>Web: Access Token + ID Token
-    Web->>API: GET /livros com Bearer JWT
+    Web->>API: GET /livros (Bearer JWT)
     API->>Auth: Consulta JWKS (com cache)
-    Note over API: Valida assinatura, iss, aud, expiração e authorities
+    Note over API: Valida assinatura, iss, aud, validade e authorities
     API->>Acervo: Consulta livros e autores
     Acervo-->>API: Dados
     API-->>Web: JSON paginado
     Web-->>Usuario: Página HTML
 ```
 
-A Biblioteca Web mantém os tokens do lado servidor; o navegador utiliza cookie de sessão. O Resource Server não solicita introspecção do token a cada requisição: utiliza a validação local com chaves obtidas por JWKS.
+O Authorization Server gerencia o login e a sessão de autenticação. A Web mantém tokens no lado servidor; o navegador utiliza um cookie de sessão. A API valida os JWTs localmente com chaves obtidas por JWKS, sem solicitar introspecção a cada requisição.
+
+Para executar o fluxo em um computador, consulte [Instalação local](../INSTALACAO_LOCAL.md).

@@ -1,166 +1,112 @@
-# Biblioteca — Docker Compose local (3 aplicacoes, 2 bancos)
+# Docker Compose — referência de operação local
 
-Esta configuracao **nao altera seu PostgreSQL antigo**. O Compose cria um servidor PostgreSQL
-separado, com dois bancos (`authorization_db` e `biblioteca_db`) e dados num volume isolado.
-Para preservar os usuarios, clientes OAuth2, livros e autores, restaure COPIAS de seus bancos
-existentes antes de iniciar os 3 aplicativos. A Web nao tem banco proprio.
+Este documento descreve como operar, diagnosticar e fazer backup do ambiente Docker da Biblioteca. **Não é um guia independente de instalação.** Para criar um ambiente do zero, use [Instalação local](../docs/INSTALACAO_LOCAL.md).
 
-## Pre-requisitos
+Todos os comandos abaixo devem ser executados **na raiz do repositório**, com Git Bash no Windows e `docker/.env` já configurado. Os blocos `bash` possuem um comando por vez.
 
-- Docker Desktop iniciado no Windows, com Docker Compose v2.
-- As portas 9000, 8080 e 8081 livres (pare os 3 apps iniciados no IntelliJ).
-- PostgreSQL antigo ainda funcionando para gerar os backups. **Nao apague o container antigo**.
-- O Client Secret em texto original do cliente usado pelo `biblioteca-web`, e credenciais Google
-  ja configuradas no Authorization Server. Segredos no banco estao em BCrypt, nao sao recuperaveis.
-- Verificar em `authorization_db.client` que o cliente interativo possui a Redirect URI
-  `http://localhost:8081/login/oauth2/code/biblioteca` e scope `openid`.
+## Componentes
 
-## 1. Preparar o arquivo de ambiente
+| Serviço Compose | Porta no computador | Finalidade |
+| --- | --- | --- |
+| `postgres` | `127.0.0.1:15433` | Bancos `authorization_db` e `biblioteca_db` |
+| `authorization-server` | `127.0.0.1:9000` | Login e tokens OAuth2/OIDC |
+| `biblioteca-api` | `127.0.0.1:8080` | API REST |
+| `biblioteca-web` | `127.0.0.1:8081` | Interface HTML |
 
-Na pasta `Apps`, em Git Bash:
+O Compose utiliza uma rede interna para comunicação entre serviços. O projeto Compose `biblioteca-clone` mantém rede e volume separados de outros projetos, mas as portas publicadas no Windows precisam estar livres.
 
-```bash
-cp docker/.env.example docker/.env
-```
+## Consultar o ambiente
 
-Edite `docker/.env` com seus valores locais. Esse arquivo fica ignorado pelo Git por
-`docker/.gitignore`. Nao cole seus segredos em mensagens nem em commits.
-
-O campo `POSTGRES_PASSWORD` e a senha do NOVO PostgreSQL do Compose; pode ser diferente da
-senha do container atual. Use o `client_id` e o segredo do cliente que ja funciona no `biblioteca-web`.
-Se o segredo original foi perdido, use a interface de rotacao de segredo **com cautela**, pois
-alterar um cliente usado em producao desconecta outras instancias que ainda usam o segredo antigo.
-
-Execute uma verificacao da configuracao sem imprimir as variaveis:
+**1. Ver os contêineres do projeto:**
 
 ```bash
-docker compose --env-file docker/.env -f docker/compose.yaml config --quiet
-git check-ignore docker/.env
+docker compose -p biblioteca-clone --env-file docker/.env -f docker/compose.yaml ps
 ```
 
-## 2. Fazer backup dos bancos ANTIGOS
-
-Confira o nome do seu container PostgreSQL atual:
+**2. Listar todos os contêineres em execução e suas portas:**
 
 ```bash
-docker ps --format 'table {{.Names}}\t{{.Ports}}'
+docker ps --format "table {{.Names}}\t{{.Ports}}"
 ```
 
-Os exemplos a seguir usam o nome `bibliotecadb`. Substitua se o seu container tiver outro nome.
-Os bancos esperados sao `authorization_db` e `biblioteca_db`.
+## Consultar logs
+
+Os logs podem conter informações sensíveis. Revise o conteúdo antes de compartilhar.
+
+**1. PostgreSQL:**
+
+```bash
+docker compose -p biblioteca-clone --env-file docker/.env -f docker/compose.yaml logs --tail=80 postgres
+```
+
+**2. Authorization Server:**
+
+```bash
+docker compose -p biblioteca-clone --env-file docker/.env -f docker/compose.yaml logs --tail=80 authorization-server
+```
+
+**3. API REST:**
+
+```bash
+docker compose -p biblioteca-clone --env-file docker/.env -f docker/compose.yaml logs --tail=80 biblioteca-api
+```
+
+**4. Interface Web:**
+
+```bash
+docker compose -p biblioteca-clone --env-file docker/.env -f docker/compose.yaml logs --tail=80 biblioteca-web
+```
+
+## Encerrar sem apagar os bancos
+
+**Comando — Parar os serviços mantendo os volumes:**
+
+```bash
+docker compose -p biblioteca-clone --env-file docker/.env -f docker/compose.yaml down
+```
+
+Os dados do PostgreSQL permanecem no volume `biblioteca-clone_postgres_data`. **Não execute `down -v` ou `docker volume prune`** em ambientes que contenham dados a preservar.
+
+## Fazer backup dos bancos existentes
+
+Esta operação é opcional e pressupõe que o PostgreSQL do projeto esteja em execução. Os backups podem conter dados pessoais e credenciais protegidas por hash; guarde-os com acesso restrito e não os publique no Git.
+
+**Comando 1 — Criar a pasta local de backups:**
 
 ```bash
 mkdir -p docker/backups
+```
 
-docker exec bibliotecadb pg_dump -U postgres -Fc -d authorization_db > docker/backups/authorization_db.dump
-docker exec bibliotecadb pg_dump -U postgres -Fc -d biblioteca_db > docker/backups/biblioteca_db.dump
+**Comando 2 — Exportar o banco de autenticação:**
 
+```bash
+docker compose -p biblioteca-clone --env-file docker/.env -f docker/compose.yaml exec -T postgres pg_dump -U postgres -Fc -d authorization_db > docker/backups/authorization_db.dump
+```
+
+**Comando 3 — Exportar o banco da API:**
+
+```bash
+docker compose -p biblioteca-clone --env-file docker/.env -f docker/compose.yaml exec -T postgres pg_dump -U postgres -Fc -d biblioteca_db > docker/backups/biblioteca_db.dump
+```
+
+**Comando 4 — Conferir se os arquivos foram criados:**
+
+```bash
 ls -lh docker/backups/*.dump
 ```
 
-**Nao prossiga** se um comando retornar erro ou um arquivo ficar vazio. Os arquivos `.dump`
-contem DADOS REAIS, sao ignorados pelo Git, e devem ser guardados com cuidado.
+Confirme que os arquivos têm tamanho maior que zero. O diretório `docker/backups/` é ignorado pelo Git.
 
-## 3. Criar o NOVO PostgreSQL pelo Compose
+### Restauração de backups
 
-```bash
-docker compose --env-file docker/.env -f docker/compose.yaml up -d postgres
+**A restauração não faz parte da instalação limpa.** O PostgreSQL executa os scripts de inicialização automaticamente na criação de um volume vazio; restaurar um dump sobre tabelas já criadas pode causar erros ou sobrescrever dados. Uma recuperação exige validar a versão do dump, utilizar bancos de destino apropriados e verificar a integridade antes de substituir qualquer dado. Por esse motivo, não há um comando genérico de restauração neste guia.
 
-docker compose --env-file docker/.env -f docker/compose.yaml ps
-```
+## Comunicação entre os serviços
 
-O PostgreSQL novo tem porta **15433 no host**, para nao conflitar com o PostgreSQL antigo
-na porta 5432. Dentro da rede Docker, as aplicacoes se conectam a `postgres:5432`.
-O init script cria `biblioteca_db` apenas quando o volume eh novo; `authorization_db`
-e criado pelo `POSTGRES_DB`.
+No navegador, o Authorization Server utiliza o endereço público local `http://localhost:9000`. Dentro dos contêineres, as chamadas servidor a servidor usam o DNS da rede Docker, por exemplo `http://authorization-server:9000`.
 
-## 4. Restaurar COPIAS dentro dos bancos novos
+A aplicação Web ativa uma configuração OAuth2 específica do perfil `docker` para separar URLs acessíveis pelo navegador das URLs internas de troca de tokens e JWKS. A API utiliza JWKS pelo endereço interno, validando o emissor definido no token.
 
-Somente depois de confirmar os backups:
+## Limites do ambiente
 
-```bash
-docker compose --env-file docker/.env -f docker/compose.yaml exec -T postgres \
-  pg_restore --exit-on-error --no-owner --no-acl -U postgres -d authorization_db \
-  < docker/backups/authorization_db.dump
-
-docker compose --env-file docker/.env -f docker/compose.yaml exec -T postgres \
-  pg_restore --exit-on-error --no-owner --no-acl -U postgres -d biblioteca_db \
-  < docker/backups/biblioteca_db.dump
-```
-
-Esses comandos RESTAURAM nos bancos NOVOS, nao no container `bibliotecadb` antigo.
-**Nao rode duas vezes no mesmo banco** sem revisar: as tabelas ja existirao e a importacao falhara.
-Nao use `docker compose down -v`: essa opcao remove o volume e todos os dados novos.
-
-Confira as tabelas sem imprimir senhas ou hashes:
-
-```bash
-docker compose --env-file docker/.env -f docker/compose.yaml exec postgres \
-  psql -U postgres -d authorization_db -c 'SELECT COUNT(*) AS usuarios FROM usuario;'
-
-docker compose --env-file docker/.env -f docker/compose.yaml exec postgres \
-  psql -U postgres -d biblioteca_db -c 'SELECT COUNT(*) AS autores FROM autor;'
-```
-
-## 5. Subir os 3 sistemas
-
-Pare primeiro os aplicativos executados pelo IntelliJ para liberar 9000, 8080 e 8081.
-Depois:
-
-```bash
-docker compose --env-file docker/.env -f docker/compose.yaml up -d --build
-docker compose --env-file docker/.env -f docker/compose.yaml ps
-```
-
-Acompanhe os logs de inicializacao (sem divulgar logs que contenham dados sensiveis):
-
-```bash
-docker compose --env-file docker/.env -f docker/compose.yaml logs --tail=80 authorization-server
-docker compose --env-file docker/.env -f docker/compose.yaml logs --tail=80 biblioteca-api
-docker compose --env-file docker/.env -f docker/compose.yaml logs --tail=80 biblioteca-web
-```
-
-## 6. Validar
-
-- Web: http://localhost:8081 (login local + Google, consultas e edicoes por perfil)
-- Administracao/Auth: http://localhost:9000/admin
-- API: http://localhost:8080/swagger-ui/index.html
-- Discovery: http://localhost:9000/.well-known/openid-configuration
-
-Teste com o GERENTE e com o OPERADOR. Confira tambem o Postman, Authorization Code + PKCE,
-consultas API e Client Credentials. Nao troque o `client_id` nem a Redirect URI somente por causa do Docker.
-
-## Por que existe `DockerOAuth2ClientConfiguration`?
-
-No browser, o issuer OIDC real continua `http://localhost:9000`. Dentro dos containers,
-`localhost` apontaria para o proprio container, entao o Web usa:
-
-- `authorization-uri=http://localhost:9000/oauth2/authorize` (navegador);
-- `token-uri=http://authorization-server:9000/oauth2/token` (servidor);
-- `jwk-set-uri=http://authorization-server:9000/oauth2/jwks` (servidor);
-- `issuer-uri=http://localhost:9000` (validacao do emissor dos ID Tokens).
-
-A configuracao so e ativada com o perfil `docker`. No IntelliJ, sua configuracao normal
-com OpenID discovery permanece inalterada. A API tambem consulta JWKS pelo DNS interno,
-mas valida o issuer publico `localhost:9000`, preservando a seguranca.
-
-## Parar sem perder dados
-
-```bash
-docker compose --env-file docker/.env -f docker/compose.yaml down
-```
-
-**Evite `down -v`**, que remove o volume PostgreSQL deste ambiente.
-
-## Limitacoes e proximas etapas
-
-- Esta configuracao e para **desenvolvimento local**, nao para expor na internet.
-  Em producao usaremos dominio, HTTPS, secrets externos e endpoints publicos permanentes.
-- O Authorization Server gera chaves RSA novas a cada reinicio; tokens anteriores
-  podem deixar de ser validos. Persistir/gerenciar chaves e melhoria separada para producao.
-- `-DskipTests` no Dockerfile reduz tempo de build: os testes seguem exigidos no GitHub Actions.
-- O PostgreSQL novo nao e inicializado com contas e clientes ficticios. Os dumps preservam
-  exatamente os dados que voce ja validou. O Compose evita apagar, modificar ou migrar o
-  banco original silenciosamente.
-- No Docker local, variaveis de ambiente sao acessiveis a quem controla o daemon Docker;
-  nao use essa configuracao como modelo definitivo de gerencia de segredos na AWS.
+Este Compose publica portas apenas em `127.0.0.1` e foi projetado para demonstração local. Uma implantação pública requer HTTPS, gestão de segredos, configuração de domínios e persistência/rotação de chaves de assinatura JWT. Os Dockerfiles não substituem o workflow de testes Maven disponível em `.github/workflows/ci.yml`.
